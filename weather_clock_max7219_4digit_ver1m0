@@ -1,0 +1,334 @@
+// adapted sketch by niq_ro from http://arduinotehniq.blogspot.com
+// and http://nicuflorica.blogspot.ro
+// version 1.0. in 21.05.2015, Craiova - Romanaia
+// schematic: http://4.bp.blogspot.com/-w4FC2YMEF7o/VEDMQTcmPnI/AAAAAAAAMRg/8mjjXUupQi0/s1600/arduino_manual_adjust_clock_RTC_DHT22_LCD1602.png
+// source for LEDControl: http://embedded-lab.com/blog/?p=6862
+#include "LedControl.h" 
+/*
+ Now we need a LedControl to work with.
+ ***** These pin numbers will probably not work with your hardware *****
+ pin 12 is connected to the DataIn 
+ pin 11 is connected to the CLK 
+ pin 10 is connected to LOAD 
+ We have only a single MAX72XX.
+ */
+LedControl lc=LedControl(12,11,10,1);
+
+// Example testing sketch for various DHT humidity/temperature sensors
+// Written by ladyada, public domain
+#include "DHT.h"
+#define DHTPIN 7     // what pin we're connected to D7
+// Uncomment whatever type you're using!
+//#define DHTTYPE DHT11   // DHT 11 
+#define DHTTYPE DHT22   // DHT 22  (AM2302)
+//#define DHTTYPE DHT21   // DHT 21 (AM2301)
+
+// if is just sensor:
+// Connect pin 1 (on the left) of the sensor to +5V
+// Connect pin 2 of the sensor to whatever your DHTPIN is
+// Connect pin 4 (on the right) of the sensor to GROUND
+// Connect a 10K resistor from pin 2 (data) to pin 1 (power) of the sensor
+
+DHT dht(DHTPIN, DHTTYPE);
+
+// declalaration for type of value
+float t1;
+int t, h;
+
+// Date and time functions using a DS1307 RTC connected via I2C and Wire lib
+// original sketck from http://learn.adafruit.com/ds1307-real-time-clock-breakout-board-kit/
+// add part with SQW=1Hz from http://tronixstuff.wordpress.com/2010/10/20/tutorial-arduino-and-the-i2c-bus/
+
+#include <Wire.h>
+#include "RTClib.h"
+
+RTC_DS1307 RTC;
+
+byte SW0 = A0;
+byte SW1 = A1;
+byte SW2 = A2;
+
+// use for hexa in zecimal conversion
+int zh1, uh1, ore1;
+int zm1, um1, miniti1;
+
+void setup()
+{
+// Initialize MAX7219 device
+lc.shutdown(0,false); // Enable display 
+lc.setIntensity(0,11); // Set brightness level (0 is min, 15 is max) 
+lc.clearDisplay(0); // Clear display register 
+ 
+// Initialize HTD sensor
+dht.begin();
+
+    Wire.begin();
+    RTC.begin();
+  if (! RTC.isrunning()) {
+    //Serial.println("RTC is NOT running!");
+    // following line sets the RTC to the date & time this sketch was compiled
+    RTC.adjust(DateTime(__DATE__, __TIME__));
+// part code from http://tronixstuff.wordpress.com/
+Wire.beginTransmission(0x68);
+Wire.write(0x07); // move pointer to SQW address
+Wire.write(0x10); // sends 0x10 (hex) 00010000 (binary) to control register - turns on square wave
+Wire.endTransmission();
+// end part code from http://tronixstuff.wordpress.com/
+  }
+
+ pinMode(SW0, INPUT);  // for this use a slide switch
+ pinMode(SW1, INPUT);  // N.O. push button switch
+ pinMode(SW2, INPUT);  // N.O. push button switch
+
+ digitalWrite(SW0, HIGH); // pull-ups on
+ digitalWrite(SW1, HIGH);
+ digitalWrite(SW2, HIGH);
+
+
+ Serial.begin(9600);
+ Serial.println("test for niq_ro");
+ Serial.println("------------------");
+
+}
+
+void loop()
+{
+ // Reading temperature or humidity takes about 250 milliseconds!
+  // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
+h = dht.readHumidity();
+t1 = dht.readTemperature();
+t1 = 10*t1;
+t = t1;
+  Serial.print("temp = ");
+  Serial.println(t);
+  Serial.print("humidit = ");
+  Serial.println(h);
+  
+  
+/* test part  
+// test humidity value
+h = 37;
+// test temperature value
+t = 19;
+*/
+
+// 
+lc.clearDisplay(0); // Clear display register 
+temperatura (t);
+delay(2000);
+umiditate (h);
+delay(2000);
+
+lc.clearDisplay(0); // Clear display register 
+for(int j=0; j<6; j++){
+DateTime now = RTC.now();
+int ora0 = now.hour();
+int minut0 = now.minute();
+int second0 = now.second();
+/*
+// serial monitor
+  Serial.print(now.hour(), DEC);
+  Serial.print(":");
+  Serial.print(now.minute(), DEC);
+  Serial.print(":");
+  Serial.print(now.second(), DEC);
+  Serial.print(" -> ");
+  Serial.print(ora1);
+  Serial.println(":");
+  Serial.print(minut1);
+  Serial.print(":");
+  Serial.print(second1);
+  Serial.println("------------------");
+*/
+ora (ora0, minut0, second0, j);
+if (!(digitalRead(SW0))) set_time(); // hold the switch to set time
+
+delay (500);
+}
+
+}
+
+
+void umiditate (int umidit)
+{
+int zu = int(umidit/10); // determin cifra zecilor
+int uu = umidit - 10*zu; // determin cifra unitatilor
+//lc.setRow(0,3,B00000000);  // afisez o liniuta pe coloana 2  
+lc.setDigit(0,3,zu, false); // afisez un 5 pe coloana 2
+lc.setDigit(0,2,uu, false); // afisez un 0 pe coloana 1
+lc.setRow(0,1,B00000000);  // afisez o liniuta pe coloana 2  
+lc.setRow(0,0,B0110111);  // afisez litera "H"
+}
+
+void temperatura (int temper)
+{
+int st = int(temper/100); // determin cifra sutelor
+temper = temper - 100*st; // restul numarului de la zeci si unitati 
+int zt = int(temper/10); // determin cifra zecilor
+int ut = temper - 10*zt; // determin cifra unitatilor
+  
+lc.setDigit(0,3,st, false); // afisez un 5 pe coloana 7
+lc.setDigit(0,2,zt, true); // afisez un 0 pe coloana 1 si virgula
+lc.setDigit(0,1,ut, false); // afisez un 5 pe coloana 7
+//lc.setRow(0,5,B1100011); // afisez un semn de grad pe coloana 5
+lc.setRow(0,0,B1001110); // afisez un C pe coloana 4
+}
+
+void ora (int ora1, int minut1, int second1, int k) 
+{
+// hour
+int zo = int(ora1/10); // determin cifra zecilor
+int uo = ora1 - 10*zo; // determin cifra unitatilor
+if (zo >= 1) lc.setDigit(0,3,zo, false); // afisez zecile de ore pe coloana 7 (in stanga)
+//lc.setDigit(0,2,uo, false); // afisez unitatile de ore pe coloana 6
+//lc.setDigit(0,2,uo, true); // afisez unitatile de ore pe coloana 6
+int k1 = k/2;
+if (k == 2*k1 ) lc.setDigit(0,2,uo, false);
+else lc.setDigit(0,2,uo, true);
+
+
+//lc.setRow(0,5,B0000001);  // afisez o liniuta pe coloana 5
+// minutes
+int zm = int(minut1/10); // determin cifra zecilor
+int um = minut1 - 10*zm; // determin cifra unitatilor
+lc.setDigit(0,1,zm, false); // afisez zecile de minute pe coloana 4
+lc.setDigit(0,0,um, false); // afisez unitatile de minute pe coloana 3
+//lc.setRow(0,2,B0000001);  // afisez o liniuta pe coloana 2
+// seconds
+//int zs = int(second1/10); // determin cifra zecilor
+//int us = second1 - 10*zs; // determin cifra unitatilor
+//lc.setDigit(0,1,zs, false); // afisez zecile de secunde pe coloana 1
+//lc.setDigit(0,0,us, false); // afisez unitatile de minute pe coloana 0 (dreapta) 
+}
+
+void set_time()   {
+  byte minutes1 = 0;
+  byte hours1 = 0;
+  byte minutes = 0;
+  byte hours = 0;
+
+  while (!digitalRead(SW0))  // set time switch must be released to exit
+  {
+    minutes1=minutes;
+    hours1=hours;
+     
+    while (!digitalRead(SW1)) // set minutes
+    { 
+     minutes++;  
+     if ((minutes & 0x0f) > 9) minutes = minutes + 6;
+     if (minutes > 0x59) minutes = 0;
+
+   // converting hexa in zecimal:
+    zh1 = hours / 16;
+    uh1 = hours - 16 * zh1 ;
+    ore1 = 10 * zh1 + uh1; 
+    zm1 = minutes / 16;
+    um1 = minutes - 16 * zm1 ;
+    miniti1 = 10 * zm1 + um1; 
+      
+       
+lc.clearDisplay(0); // Clear display register 
+// hour
+//int zo = int(ora1/10); // determin cifra zecilor
+//int uo = ora1 - 10*zo; // determin cifra unitatilor
+if (zh1 >= 1) lc.setDigit(0,3,zh1, false); // afisez zecile de ore pe coloana 7 (in stanga)
+lc.setDigit(0,3,uh1, true); // afisez unitatile de ore pe coloana 6
+//lc.setRow(0,5,B0000001);  // afisez o liniuta pe coloana 5
+// minutes
+//int zm = int(minut1/10); // determin cifra zecilor
+//int um = minut1 - 10*zm; // determin cifra unitatilor
+lc.setDigit(0,1,zm1, false); // afisez zecile de minute pe coloana 4
+lc.setDigit(0,0,um1, false); // afisez unitatile de minute pe coloana 3
+//lc.setRow(0,2,B0000001);  // afisez o liniuta pe coloana 2
+// seconds
+//int zs = int(second1/10); // determin cifra zecilor
+//int us = second1 - 10*zs; // determin cifra unitatilor
+//lc.setDigit(0,1,0, false); // afisez zecile de secunde pe coloana 1
+//lc.setDigit(0,0,0, false); // afisez unitatile de minute pe coloana 0 (dreapta) 
+
+ 
+      Serial.print("Minutes = ");
+      if (minutes >= 9) Serial.print("0");
+      Serial.println(minutes, HEX);
+    delay(250);    
+    }
+
+    while (!digitalRead(SW2)) // set hours
+    { 
+     hours++;          
+      if ((hours & 0x0f) > 9) hours =  hours + 6;
+      if (hours > 0x23) hours = 0;
+     
+   // converting hexa in zecimal:
+    zh1 = hours / 16;
+    uh1 = hours - 16 * zh1 ;
+    ore1 = 10 * zh1 + uh1; 
+    zm1 = minutes / 16;
+    um1 = minutes - 16 * zm1 ;
+    miniti1 = 10 * zm1 + um1; 
+  
+lc.clearDisplay(0); // Clear display register 
+// hour
+//int zo = int(ora1/10); // determin cifra zecilor
+//int uo = ora1 - 10*zo; // determin cifra unitatilor
+if (zh1 >= 1) lc.setDigit(0,3,zh1, false); // afisez zecile de ore pe coloana 7 (in stanga)
+lc.setDigit(0,2,uh1, true); // afisez unitatile de ore pe coloana 6
+//lc.setRow(0,5,B0000001);  // afisez o liniuta pe coloana 5
+// minutes
+//int zm = int(minut1/10); // determin cifra zecilor
+//int um = minut1 - 10*zm; // determin cifra unitatilor
+lc.setDigit(0,1,zm1, false); // afisez zecile de minute pe coloana 4
+lc.setDigit(0,0,um1, false); // afisez unitatile de minute pe coloana 3
+//lc.setRow(0,2,B0000001);  // afisez o liniuta pe coloana 2
+// seconds
+//int zs = int(second1/10); // determin cifra zecilor
+//int us = second1 - 10*zs; // determin cifra unitatilor
+//lc.setDigit(0,1,0, false); // afisez zecile de secunde pe coloana 1
+//lc.setDigit(0,0,0, false); // afisez unitatile de minute pe coloana 0 (dreapta) 
+
+      Serial.print("Hours = ");
+      if (hours <= 9) Serial.print("0");
+      Serial.println(hours, HEX);
+    delay(250);
+    }
+
+    Wire.beginTransmission(0x68); // activate DS1307
+    Wire.write(0); // where to begin
+    Wire.write(0x00);          //seconds
+    Wire.write(minutes);          //minutes
+    Wire.write(0x80 | hours);    //hours (24hr time)
+    Wire.write(0x06);  // Day 01-07
+    Wire.write(0x01);  // Date 0-31
+    Wire.write(0x05);  // month 0-12
+    Wire.write(0x09);  // Year 00-99
+    Wire.write(0x10); // Control 0x10 produces a 1 HZ square wave on pin 7. 
+    Wire.endTransmission();
+  
+    // converting hexa in zecimal:
+    zh1 = hours / 16;
+    uh1 = hours - 16 * zh1 ;
+    ore1 = 10 * zh1 + uh1; 
+    zm1 = minutes / 16;
+    um1 = minutes - 16 * zm1 ;
+    miniti1 = 10 * zm1 + um1; 
+    
+lc.clearDisplay(0); // Clear display register 
+// hour
+//int zo = int(ora1/10); // determin cifra zecilor
+//int uo = ora1 - 10*zo; // determin cifra unitatilor
+if (zh1 >= 1) lc.setDigit(0,3,zh1, false); // afisez zecile de ore pe coloana 7 (in stanga)
+lc.setDigit(0,2,uh1, true); // afisez unitatile de ore pe coloana 6
+//lc.setRow(0,5,B0000001);  // afisez o liniuta pe coloana 5
+// minutes
+//int zm = int(minut1/10); // determin cifra zecilor
+//int um = minut1 - 10*zm; // determin cifra unitatilor
+lc.setDigit(0,1,zm1, false); // afisez zecile de minute pe coloana 4
+lc.setDigit(0,0,um1, false); // afisez unitatile de minute pe coloana 3
+//lc.setRow(0,2,B0000001);  // afisez o liniuta pe coloana 2
+// seconds
+//int zs = int(second1/10); // determin cifra zecilor
+//int us = second1 - 10*zs; // determin cifra unitatilor
+//lc.setDigit(0,1,0, false); // afisez zecile de secunde pe coloana 1
+//lc.setDigit(0,0,0, false); // afisez unitatile de minute pe coloana 0 (dreapta) 
+  }  
+}
