@@ -1,7 +1,7 @@
 // adapted sketch by niq_ro from http://arduinotehniq.blogspot.com
 // and http://nicuflorica.blogspot.ro
-// version 1.0 in 6.11.2014, Craiova - Romanaia
-// version 2.0 in 16.12.2014
+// base version 1.0 in 6.11.2014, Craiova - Romanaia
+// actul version 3.0 in 22.05.2015
 // source for LEDControl: http://embedded-lab.com/blog/?p=6862
 #include "LedControl.h" 
 /*
