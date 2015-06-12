@@ -62,7 +62,7 @@ int TimeOutCounter;
 
 // These variables are for the push button routine
 int buttonstate = 0; //flag to see if the button has been pressed, used internal on the subroutine only
-int pushlengthset = 2-000; // value for a long push in mS
+int pushlengthset = 2000; // value for a long push in mS
 int pushlength = pushlengthset; // set default pushlength
 int pushstart = 0;// sets default push value for the button going low
 int pushstop = 0;// sets the default value for when the button goes back high
